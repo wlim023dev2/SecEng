@@ -1,0 +1,27 @@
+trigger:
+  - main
+
+variables:
+- name: IMAGE_NAME
+  value: Hello-World
+- name: PROJECT_KEY # Set the desired project to run the cli scanning with
+  value: azureDevOpsPoC
+- name: CLI_VERSION # Orca CLI version
+  value: 1.5.3
+
+pool:
+  vmImage: "ubuntu-latest"
+
+steps:
+  - script: | # Build your docker image, that is going to be scanned in the next step     
+      docker build -f Dockerfile -t ${IMAGE_NAME} .
+      docker images
+    displayName: Build Image stage
+
+  - script: |  # Run Orca CLI against the previously created container image
+      curl -sfL 'https://raw.githubusercontent.com/orcasecurity/orca-cli/main/install.sh' | bash
+      orca-cli -p ${PROJECT_KEY} image scan ${IMAGE_NAME} 
+    displayName: Orca Image Scan 
+    env:
+     ORCA_SECURITY_API_TOKEN: $(ORCA_SECURITY_API_TOKEN)
+     ORCA_SECURITY_CONTAINER_DAEMON_HOST: "unix:///var/run/docker.sock"
