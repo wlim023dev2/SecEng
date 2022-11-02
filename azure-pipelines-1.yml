@@ -3,7 +3,7 @@ trigger:
 
 variables:
 - name: IMAGE_NAME
-  value: Hello-World
+  value: hello-world
 - name: PROJECT_KEY # Set the desired project to run the cli scanning with
   value: azureDevOpsPoC
 - name: CLI_VERSION # Orca CLI version
