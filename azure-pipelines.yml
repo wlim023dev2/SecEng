@@ -1,37 +1,65 @@
-# Docker
-# Build a Docker image
-# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+# # Docker
+# # Build a Docker image
+# # https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+
+# trigger:
+# - master
+
+# resources:
+# - repo: self
+
+# variables:
+#   tag: '$(Build.BuildId)'
+
+# stages:
+# - stage: Build
+#   displayName: Build image
+#   jobs:
+#   - job: Build
+#     displayName: Build
+#     pool:
+#       vmImage: ubuntu-latest
+#     steps:
+#     - task: Docker@2
+#       displayName: Build an image
+#       inputs:
+#         command: build
+#         dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
+#         tags: |
+#           $(tag)
+    
+#     - script: |
+#         cd $(Agent.BuildDirectory)
+#         curl -s -L --user admin:$(COVERITY_AUTHKEY) -o license.dat $(COVERITY_URL)/downloadFile.htm?fn=license.dat
+#         curl -s -L --user admin:$(COVERITY_AUTHKEY) $(COVERITY_URL)/downloadFile.htm?fn=cov-analysis-linux64-2020.06.tar.gz | tar -xvzf -
+#         mv cov-analysis-linux64-2020.06 cov-analysis
+#         cp license.dat ./cov-analysis/bin
+#         displayName: 'Install Coverity'
 
 trigger:
-- master
-
-resources:
-- repo: self
+  - main
 
 variables:
-  tag: '$(Build.BuildId)'
+- name: IMAGE_NAME
+  value: hello-world
+- name: PROJECT_KEY # Set the desired project to run the cli scanning with
+  value: azureDevOpsPoC
+- name: CLI_VERSION # Orca CLI version
+  value: 1.5.3
 
-stages:
-- stage: Build
-  displayName: Build image
-  jobs:
-  - job: Build
-    displayName: Build
-    pool:
-      vmImage: ubuntu-latest
-    steps:
-    - task: Docker@2
-      displayName: Build an image
-      inputs:
-        command: build
-        dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
-        tags: |
-          $(tag)
-    
-    - script: |
-        cd $(Agent.BuildDirectory)
-        curl -s -L --user admin:$(COVERITY_AUTHKEY) -o license.dat $(COVERITY_URL)/downloadFile.htm?fn=license.dat
-        curl -s -L --user admin:$(COVERITY_AUTHKEY) $(COVERITY_URL)/downloadFile.htm?fn=cov-analysis-linux64-2020.06.tar.gz | tar -xvzf -
-        mv cov-analysis-linux64-2020.06 cov-analysis
-        cp license.dat ./cov-analysis/bin
-        displayName: 'Install Coverity'
+pool:
+  vmImage: "ubuntu-latest"
+
+steps:
+  - script: | # Build your docker image, that is going to be scanned in the next step     
+      docker build -f Dockerfile -t ${IMAGE_NAME} .
+      docker images
+    displayName: Build Image stage
+
+  - script: |  # Run Orca CLI against the previously created container image
+      curl -sfL 'https://raw.githubusercontent.com/orcasecurity/orca-cli/main/install.sh' | bash
+      orca-cli -p ${PROJECT_KEY} image scan ${IMAGE_NAME} 
+    displayName: Orca Image Scan 
+    env:
+     ORCA_SECURITY_API_TOKEN: $(ORCA_SECURITY_API_TOKEN)
+     ORCA_SECURITY_CONTAINER_DAEMON_HOST: "unix:///var/run/docker.sock"
