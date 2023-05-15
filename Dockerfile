@@ -1,4 +1,5 @@
 FROM python:3-alpine
+USER nonadminuser
 WORKDIR /usr/src/app
 EXPOSE 8000
 COPY requirements.txt .
